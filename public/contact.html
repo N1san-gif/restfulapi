@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+  <meta charset="UTF-8">
+  <title>Kontaktai</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    form { margin-bottom: 20px; }
+    input { margin: 5px; padding: 5px; }
+    button { margin: 5px; padding: 5px 10px; }
+    li { margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <h1>Kontaktų sąrašas</h1>
+
+  <!-- Forma naujam kontaktui -->
+  <form id="contact-form">
+    <input type="hidden" id="contact-id">
+    <input type="text" id="name" placeholder="Vardas" required>
+    <input type="email" id="email" placeholder="El. paštas" required>
+    <input type="phone" id="phone" placeholder="phone number" required>
+    <button type="submit">Išsaugoti</button>
+  </form>
+
+  <ul id="contacts-list"></ul>
+
+  <script>
+    const apiUrl = 'http://localhost:8000/api/contacts';
+    const form = document.getElementById('contact-form');
+    const nameInput = document.getElementById('name');
+    const emailInput = document.getElementById('email');
+    const phonelInput = document.getElementById('phone');
+    const idInput = document.getElementById('contact-id');
+    const list = document.getElementById('contacts-list');
+
+    // Užkrauna kontaktų sąrašą
+    function loadContacts() {
+      fetch(apiUrl)
+        .then(r => r.json())
+        .then(contacts => {
+          list.innerHTML = '';
+          contacts.forEach(c => addContactToList(c));
+        })
+        .catch(err => console.error('Klaida gaunant kontaktus:', err));
+    }
+
+    // Įterpia kontaktą į sąrašą
+    function addContactToList(contact) {
+      const li = document.createElement('li');
+      li.textContent = `${contact.name} (${contact.email}) `;
+
+      // Redagavimo mygtukas
+      const editBtn = document.createElement('button');
+      editBtn.textContent = 'Redaguoti';
+      editBtn.onclick = () => {
+        idInput.value = contact.id;
+        nameInput.value = contact.name;
+        emailInput.value = contact.email;
+      };
+      li.appendChild(editBtn);
+
+      // Trynimo mygtukas
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Ištrinti';
+      delBtn.onclick = () => deleteContact(contact.id);
+      li.appendChild(delBtn);
+
+      list.appendChild(li);
+    }
+
+    // Įrašo naują arba atnaujina kontaktą
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const contactData = {
+        name: nameInput.value,
+        email: emailInput.value
+      };
+
+      const contactId = idInput.value;
+      const method = contactId ? 'PUT' : 'POST';
+      const url = contactId ? `${apiUrl}/${contactId}` : apiUrl;
+
+      fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contactData)
+      })
+      .then(r => {
+        if (!r.ok) throw new Error('Nepavyko išsaugoti');
+        return r.json();
+      })
+      .then(() => {
+        form.reset();
+        idInput.value = '';
+        loadContacts();
+      })
+      .catch(err => alert('Klaida: ' + err.message));
+    });
+
+    // Ištrina kontaktą
+    function deleteContact(id) {
+      if (!confirm('Ar tikrai ištrinti?')) return;
+      fetch(`${apiUrl}/${id}`, { method: 'DELETE' })
+        .then(r => {
+          if (!r.ok) throw new Error('Nepavyko ištrinti');
+          loadContacts();
+        })
+        .catch(err => alert('Klaida: ' + err.message));
+    }
+
+    // Užkrauname kontaktus startuojant
+    loadContacts();
+  </script>
+</body>
+</html>
